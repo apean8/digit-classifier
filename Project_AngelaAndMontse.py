@@ -47,7 +47,7 @@ for name, lws, clf in classifiers:
     print("\n  Training %s" % name)
 
     if name == 'MLP':
-        mlp_scores = np.zeros((len(hidden_layer), len(hidden_layer)))
+        mlp_scores = np.zeros((len(hidden_layer), len(hidden_layer), 2))
         mlp_curve = []
         for i, n_neurons1 in enumerate(hidden_layer):
             for j, n_neurons2 in enumerate(hidden_layer):
@@ -56,18 +56,31 @@ for name, lws, clf in classifiers:
                 pred = cross_val_predict(clf, data_X, data_y, cv=5, method='predict_proba')
                 fpr, tpr, thresholds = roc_curve(data_y, pred[:, 1])
                 roc_auc = auc(fpr, tpr)
-                media = np.mean(scores)
+                media = scores.mean()
 
-                mlp_scores[i, j] = media
+                mlp_scores[i, j, 0] = media
+                mlp_scores[i, j, 1] = 1 - media
                 mlp_curve.append([fpr, tpr, thresholds, roc_auc, n_neurons1, n_neurons2])
         
-        best= np.argmax([item[3] for item in mlp_curve])
-        print(best)
-        curve_result.append([name, mlp_curve[best][0], mlp_curve[best][1], mlp_curve[best][2], mlp_curve[best][3]])
-        plt.imshow(mlp_scores)
+        min_index = np.unravel_index(np.argmin(mlp_scores[:, :, 1]), mlp_scores[:, :, 1].shape)
+        optimal_i = min_index[0]
+        optimal_j = min_index[1]
+
+        optimal_neurons1 = hidden_layer[optimal_i]
+        optimal_neurons2 = hidden_layer[optimal_j]
+
+        print("Optimal configuration: ({}, {})".format(optimal_neurons1, optimal_neurons2))
+
+        for item in mlp_curve:
+            if item[4] == optimal_neurons1 and item[5] == optimal_neurons2:
+                optimal_roc_curve = item
+                break
+
+        curve_result.append([name, optimal_roc_curve[0], optimal_roc_curve[1], optimal_roc_curve[2], optimal_roc_curve[3]])
+        plt.imshow(mlp_scores[:, :, 0])
         for i in range(len(hidden_layer)):
             for j in range(len(hidden_layer)):
-                text = plt.text(j, i, "{:.2f}".format(mlp_scores[i, j]),
+                text = plt.text(j, i, "{:.2f}".format(mlp_scores[i, j, 0]),
                        ha="center", va="center", color="w")
         plt.colorbar()
         plt.xticks(np.arange(len(hidden_layer)), hidden_layer)
