@@ -92,6 +92,7 @@ for name, lws, clf in classifiers:
     if name == 'KNN':
         knn_scores = []
         knn_curve = []
+        cv_errors = []
         for k in neigh:
             clf.set_params(n_neighbors=k)
             scores = cross_val_score(clf, data_X, data_y, cv=5, scoring='f1')
@@ -100,6 +101,7 @@ for name, lws, clf in classifiers:
             roc_auc = auc(fpr, tpr)
             media = np.mean(scores)
             knn_scores.append(media)
+            cv_errors.append(1 - media)
 
             knn_curve.append([fpr, tpr, thresholds, roc_auc])
         
@@ -109,12 +111,12 @@ for name, lws, clf in classifiers:
         plt.plot(neigh, knn_scores)
         plt.show()
 
-        best = np.argmax([item[3] for item in knn_curve])
-        best_k = neigh[best]
-        curve_result.append([name, knn_curve[best][0], knn_curve[best][1], knn_curve[best][2], knn_curve[best][3]])
+        optimal = np.argmin(cv_errors)
+        optimal_k = neigh[optimal]
+        curve_result.append([name, knn_curve[optimal][0], knn_curve[optimal][1], knn_curve[optimal][2], knn_curve[optimal][3]])
         for fpr, tpr, thresholds, roc_auc in knn_curve:
             plt.plot(fpr, tpr, color='lemonchiffon')
-        plt.plot(knn_curve[best][0], knn_curve[best][1], color='orange', label='Best ROC Curve (K={})'.format(best_k))
+        plt.plot(knn_curve[optimal][0], knn_curve[optimal][1], color='orange', label='Best ROC Curve (K={})'.format(optimal_k))
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
         plt.legend()
