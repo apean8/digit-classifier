@@ -146,10 +146,23 @@ plt.ylabel('F1-score')
 plt.legend()
 plt.show()
 
+# ROC curve graph
 for name, fpr, tpr, thresholds, roc_auc in curve_result:
-    plt.plot(fpr, tpr, label=f'{name} (AUC={roc_auc:.2f})')
+    plt.plot(fpr, tpr, label=f'{name} (AUC={roc_auc:.4f})')
 
 plt.plot([0, 1], [0, 1], color='black', lw=2, linestyle='--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.legend(loc="lower right")
+plt.show()
+
+# ROC curve graph with zoom in the upper left corner 
+for name, fpr, tpr, thresholds, roc_auc in curve_result:
+    plt.plot(fpr, tpr, label=f'{name} (AUC={roc_auc:.4f})')
+
+plt.plot([0, 1], [0, 1], color='black', lw=2, linestyle='--')
+plt.xlim(0,0.2,0.05)
+plt.ylim(0.8,1,0.05)
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.legend(loc="lower right")
