@@ -34,7 +34,7 @@ data_y = np.in1d(labs,myDigit)
 classifiers = [
     ("Linear", 1, LinearDiscriminantAnalysis()),
     ("Quadratic", 1, QuadraticDiscriminantAnalysis()),
-    ("MLP",1, MLPClassifier(max_iter=1000)),
+    ("MLP", 1, MLPClassifier(max_iter=1000)),
     ("KNN", 1, KNeighborsClassifier())
 ]
 
@@ -89,7 +89,7 @@ for name, lws, clf in classifiers:
         plt.ylabel('Neuronas en L1')
         plt.show()
 
-    if name == 'KNN':
+    elif name == 'KNN':
         knn_scores = []
         knn_curve = []
         cv_errors = []
