@@ -2,6 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io.matlab as matlab
+from time import time
 from sklearn.calibration import cross_val_predict
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.metrics import auc, roc_curve
@@ -49,10 +50,18 @@ for name, lws, clf in classifiers:
     if name == 'MLP':
         mlp_scores = np.zeros((len(hidden_layer), len(hidden_layer), 2))
         mlp_curve = []
+        mlp_times = []
+
         for i, n_neurons1 in enumerate(hidden_layer):
             for j, n_neurons2 in enumerate(hidden_layer):
+                tr_time = 0
                 clf.set_params(hidden_layer_sizes=(n_neurons1, n_neurons2))
+
+                t_ini = time()
                 scores = cross_val_score(clf, data_X, data_y, cv=5, scoring='f1')
+                tr_time += time() - t_ini
+                mlp_times.append(tr_time)
+
                 pred = cross_val_predict(clf, data_X, data_y, cv=5, method='predict_proba')
                 fpr, tpr, thresholds = roc_curve(data_y, pred[:, 1])
                 roc_auc = auc(fpr, tpr)
@@ -69,7 +78,8 @@ for name, lws, clf in classifiers:
         optimal_neurons1 = hidden_layer[optimal_i]
         optimal_neurons2 = hidden_layer[optimal_j]
 
-        print("Optimal configuration: ({}, {})".format(optimal_neurons1, optimal_neurons2))
+        print('Average training time: {:.4f}'.format(np.mean(np.array(mlp_times))))
+        print('Optimal configuration: ({}, {})'.format(optimal_neurons1, optimal_neurons2))
 
         for item in mlp_curve:
             if item[4] == optimal_neurons1 and item[5] == optimal_neurons2:
@@ -89,13 +99,35 @@ for name, lws, clf in classifiers:
         plt.ylabel('Neuronas en L1')
         plt.show()
 
+        selected_neurons = [5, 10, 15, 20]
+        selected_indices = [hidden_layer.index(neuron) for neuron in selected_neurons]
+        plt.imshow(mlp_scores[selected_indices][:, selected_indices, 0])
+        for i in range(len(selected_neurons)):
+            for j in range(len(selected_neurons)):
+                text = plt.text(j, i, "{:.2f}".format(mlp_scores[selected_indices[i], selected_indices[j], 0]),
+                                ha="center", va="center", color="w")
+        plt.colorbar()
+        plt.xticks(np.arange(len(selected_neurons)), selected_neurons)
+        plt.yticks(np.arange(len(selected_neurons)), selected_neurons)
+        plt.xlabel('Neuronas en L2')
+        plt.ylabel('Neuronas en L1')
+        plt.show()
+
     elif name == 'KNN':
         knn_scores = []
         knn_curve = []
+        knn_times = []
         cv_errors = []
+
         for k in neigh:
+            tr_time = 0
             clf.set_params(n_neighbors=k)
+
+            t_ini = time()
             scores = cross_val_score(clf, data_X, data_y, cv=5, scoring='f1')
+            tr_time += time() - t_ini
+            knn_times.append(tr_time)
+
             pred = cross_val_predict(clf, data_X, data_y, cv=5, method='predict_proba')
             fpr, tpr, thresholds = roc_curve(data_y, pred[:, 1])
             roc_auc = auc(fpr, tpr)
@@ -111,6 +143,7 @@ for name, lws, clf in classifiers:
         plt.plot(neigh, knn_scores)
         plt.show()
 
+        print('Average training time: {:.4f}'.format(np.mean(np.array(knn_times))))
         optimal = np.argmin(cv_errors)
         optimal_k = neigh[optimal]
         curve_result.append([name, knn_curve[optimal][0], knn_curve[optimal][1], knn_curve[optimal][2], knn_curve[optimal][3]])
@@ -123,7 +156,12 @@ for name, lws, clf in classifiers:
         plt.show()
 
     else:
+        tr_time = 0
+
+        t_ini = time()
         scores = cross_val_score(clf, data_X, data_y, cv=5, scoring='f1')
+        tr_time += time() - t_ini
+
         pred = cross_val_predict(clf, data_X, data_y, cv=5, method='predict_proba')
         fpr, tpr, thresholds = roc_curve(data_y, pred[:, 1])
         roc_auc = auc(fpr, tpr)
@@ -131,6 +169,7 @@ for name, lws, clf in classifiers:
 
         score_result.append([name, scores, media])
         curve_result.append([name, fpr, tpr, thresholds, roc_auc])
+        print('Average training time {:.4f}'.format(tr_time))
 
 for name, scores, media in score_result:
     if name == 'Linear':
