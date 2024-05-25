@@ -11,7 +11,6 @@ from sklearn.neural_network import MLPClassifier
 # Load the database
 mat_file =  "BigDigits.mat"
 mat = matlab.loadmat(mat_file,squeeze_me=True) # dictionary
-list(mat.keys()) # list vars
 
 taska = True
 
@@ -33,11 +32,11 @@ classifiers = [
     ("Linear", 1, LinearDiscriminantAnalysis()),
     ("Quadratic", 1, QuadraticDiscriminantAnalysis()),
     ("MLP",1, MLPClassifier(max_iter=1000)),
-    ("KNN", 1, KNeighborsClassifier()),
+    ("KNN", 1, KNeighborsClassifier())
 ]
 
 scoring = ['f1', 'accuracy']
-hidden_layer = [1, 5, 10]
+hidden_layer = [1, 5, 10, 15, 20]
 neigh = np.arange(1, 21)
 
 times = []
@@ -48,8 +47,12 @@ curve_result = []
 
 for name, lws, clf in classifiers:
     print('\n Training %s' %name)
+    print('\n Training %s' %name)
 
     if name == 'MLP':
+        total_time = []
+        mlp_scores = np.zeros((len(hidden_layer), len(hidden_layer), 3))
+
         total_time = []
         mlp_scores = np.zeros((len(hidden_layer), len(hidden_layer), 3))
 
@@ -60,7 +63,13 @@ for name, lws, clf in classifiers:
                 total_time.append(scores['fit_time'].mean())
 
                 media = scores['test_f1'].mean()
+                scores = cross_validate(clf, data_X, data_y, cv=5, scoring=scoring)
+                total_time.append(scores['fit_time'].mean())
+
+                media = scores['test_f1'].mean()
                 mlp_scores[i, j, 0] = media
+                mlp_scores[i, j, 1] = 1- media
+                mlp_scores[i, j, 2] = scores['test_accuracy'].mean()
                 mlp_scores[i, j, 1] = 1- media
                 mlp_scores[i, j, 2] = scores['test_accuracy'].mean()
         
@@ -80,10 +89,14 @@ for name, lws, clf in classifiers:
 
         # We compute the optimal value so we can estimate the predictions
         clf.set_params(hidden_layer_sizes=(optimal_neurons1, optimal_neurons2))
-        pred = cross_val_predict(clf, data_X, data_y, cv=5)
+        pred_proba = cross_val_predict(clf, data_X, data_y, cv=5, method='predict_proba')
+        pred = pred_proba[:,1]>0.5
         conf_matrix = confusion_matrix(data_y, pred, normalize='pred')
-        fpr, tpr, thresholds = roc_curve(data_y, pred)
+        fpr, tpr, thresholds = roc_curve(data_y, pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
+
+        curve_result.append([name, fpr, tpr, thresholds, roc_auc])
+        conf_matrix_result.append(conf_matrix)
 
         curve_result.append([name, fpr, tpr, thresholds, roc_auc])
         conf_matrix_result.append(conf_matrix)
@@ -113,6 +126,11 @@ for name, lws, clf in classifiers:
 
             media = scores['test_f1'].mean()
             knn_accuracy.append(scores['test_accuracy'].mean())
+            scores = cross_validate(clf, data_X, data_y, cv=5, scoring=scoring)
+            total_time.append(scores['fit_time'].mean())
+
+            media = scores['test_f1'].mean()
+            knn_accuracy.append(scores['test_accuracy'].mean())
             knn_scores.append(media)
             cv_errors.append(1-media)
             
@@ -131,9 +149,10 @@ for name, lws, clf in classifiers:
         optimal_k = neigh[optimal]
 
         clf.set_params(n_neighbors=optimal_k)
-        pred = cross_val_predict(clf, data_X, data_y, cv=5)
+        pred_proba = cross_val_predict(clf, data_X, data_y, cv=5, method='predict_proba')
+        pred = pred_proba[:,1]>0.5
         conf_matrix = confusion_matrix(data_y, pred, normalize='pred')
-        fpr, tpr, thresholds = roc_curve(data_y, pred)
+        fpr, tpr, thresholds = roc_curve(data_y, pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         
         curve_result.append([name, fpr, tpr, thresholds, roc_auc])
@@ -148,11 +167,12 @@ for name, lws, clf in classifiers:
         f1_result.append([name, scores['test_f1'], scores['test_f1'].mean()])
         accuracy_result.append(scores['test_accuracy'].mean())
 
-        pred = cross_val_predict(clf, data_X, data_y, cv=5)
+        pred_proba = cross_val_predict(clf, data_X, data_y, cv=5, method='predict_proba')
+        pred = pred_proba[:,1]>0.5
         conf_matrix = confusion_matrix(data_y, pred, normalize='pred')
         conf_matrix_result.append(conf_matrix)
         
-        fpr, tpr, thresholds = roc_curve(data_y, pred)
+        fpr, tpr, thresholds = roc_curve(data_y, pred_proba[:, 1])
         roc_auc = auc(fpr, tpr)
         curve_result.append([name, fpr, tpr, thresholds, roc_auc])
 
@@ -180,6 +200,38 @@ plt.plot([0, 1], [0, 1], color='black', lw=2, linestyle='--')
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.legend(loc="lower right")
+plt.show()
+
+# We compared the accuracy of each classifier
+names = [clf[0] for clf in classifiers]
+bar_container = plt.bar(names, accuracy_result)
+plt.bar_label(bar_container, fmt='{:.4f}')
+plt.show()
+
+# We compared the times of training of each classifier
+names = [clf[0] for clf in classifiers]
+bar_container = plt.bar(names, times)
+plt.ylabel('Time [s]')
+plt.bar_label(bar_container, fmt='{:.4f}')
+plt.show()
+
+# We compared the confusion matrix of each classifier
+for n, conf_matrix in enumerate(conf_matrix_result):
+    plt.subplot(2, 2, n+1)
+    plt.imshow(conf_matrix, cmap='magma')
+    plt.colorbar()
+    plt.title(names[n])
+    plt.xticks(np.arange(conf_matrix.shape[1]))
+    plt.yticks(np.arange(conf_matrix.shape[0]))
+
+    for i in range(conf_matrix.shape[0]):
+        for j in range(conf_matrix.shape[1]):
+            if conf_matrix[i, j] < 0.5:
+                text_color = 'white'
+            else:
+                text_color = 'black'
+            plt.text(j, i, '{:.4f}'.format(conf_matrix[i, j]), ha='center', va='center', color=text_color)
+
 plt.show()
 
 # We compared the accuracy of each classifier
