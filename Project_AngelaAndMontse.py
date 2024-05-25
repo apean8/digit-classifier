@@ -215,4 +215,4 @@ for n, conf_matrix in enumerate(conf_matrix_result):
                 text_color = 'black'
             plt.text(j, i, '{:.4f}'.format(conf_matrix[i, j]), ha='center', va='center', color=text_color)
 
-plt.show(
+plt.show()
