@@ -1,4 +1,3 @@
-
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.io.matlab as matlab
@@ -48,8 +47,12 @@ curve_result = []
 
 for name, lws, clf in classifiers:
     print('\n Training %s' %name)
+    print('\n Training %s' %name)
 
     if name == 'MLP':
+        total_time = []
+        mlp_scores = np.zeros((len(hidden_layer), len(hidden_layer), 3))
+
         total_time = []
         mlp_scores = np.zeros((len(hidden_layer), len(hidden_layer), 3))
 
@@ -60,7 +63,13 @@ for name, lws, clf in classifiers:
                 total_time.append(scores['fit_time'].mean())
 
                 media = scores['test_f1'].mean()
+                scores = cross_validate(clf, data_X, data_y, cv=5, scoring=scoring)
+                total_time.append(scores['fit_time'].mean())
+
+                media = scores['test_f1'].mean()
                 mlp_scores[i, j, 0] = media
+                mlp_scores[i, j, 1] = 1- media
+                mlp_scores[i, j, 2] = scores['test_accuracy'].mean()
                 mlp_scores[i, j, 1] = 1- media
                 mlp_scores[i, j, 2] = scores['test_accuracy'].mean()
         
@@ -89,6 +98,9 @@ for name, lws, clf in classifiers:
         curve_result.append([name, fpr, tpr, thresholds, roc_auc])
         conf_matrix_result.append(conf_matrix)
 
+        curve_result.append([name, fpr, tpr, thresholds, roc_auc])
+        conf_matrix_result.append(conf_matrix)
+
         plt.imshow(mlp_scores[:, :, 0])
         for i in range(len(hidden_layer)):
             for j in range(len(hidden_layer)):
@@ -109,6 +121,11 @@ for name, lws, clf in classifiers:
 
         for k in neigh:
             clf.set_params(n_neighbors=k)
+            scores = cross_validate(clf, data_X, data_y, cv=5, scoring=scoring)
+            total_time.append(scores['fit_time'].mean())
+
+            media = scores['test_f1'].mean()
+            knn_accuracy.append(scores['test_accuracy'].mean())
             scores = cross_validate(clf, data_X, data_y, cv=5, scoring=scoring)
             total_time.append(scores['fit_time'].mean())
 
@@ -216,3 +233,31 @@ for n, conf_matrix in enumerate(conf_matrix_result):
             plt.text(j, i, '{:.4f}'.format(conf_matrix[i, j]), ha='center', va='center', color=text_color)
 
 plt.show()
+
+# We compared the accuracy of each classifier
+names = [clf[0] for clf in classifiers]
+bar_container = plt.bar(names, accuracy_result)
+plt.bar_label(bar_container, fmt='{:.4f}')
+plt.show()
+
+# We compared the times of training of each classifier
+names = [clf[0] for clf in classifiers]
+bar_container = plt.bar(names, times)
+plt.bar_label(bar_container, fmt='{:.4f}')
+plt.show()
+
+# We compared the confusion matrix of each classifier
+for n, conf_matrix in enumerate(conf_matrix_result):
+    plt.subplot(2, 2, n+1)
+    plt.imshow(conf_matrix)
+    plt.colorbar()
+    plt.title(names[n])
+    plt.xticks(np.arange(conf_matrix.shape[1]))
+    plt.yticks(np.arange(conf_matrix.shape[0]))
+
+    for i in range(conf_matrix.shape[0]):
+        for j in range(conf_matrix.shape[1]):
+            plt.text(j, i, '{:.4f}'.format(conf_matrix[i, j]), ha='center', va='center')
+
+plt.show()
+
